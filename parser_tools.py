@@ -53,6 +53,7 @@ def compute_firsts(G):
                     
     return firsts
 
+
 def expand(item: Item, firsts):
     next_symbol = item.NextSymbol
     if next_symbol is None or not next_symbol.IsNonTerminal:
@@ -79,6 +80,7 @@ def compress(items):
         lookaheads.update(item.lookaheads)
     
     return { Item(x.production, x.pos, set(lookahead)) for x, lookahead in centers.items() }
+
 
 def closure_lr1(items, firsts):
     closure = ContainerSet(*items)
@@ -147,6 +149,7 @@ def build_LR1_automaton(G):
                     
     automaton.set_formatter(multiline_formatter)
     return automaton
+
 
 class ShiftReduceParser:
 
@@ -250,6 +253,7 @@ class LR1Parser(ShiftReduceParser):
     def _register(table, key, value):
         assert key not in table or table[key] == value, 'Shift-Reduce or Reduce-Reduce conflict!!!'
         table[key] = value
+     
        
 class Token:
     """
@@ -272,4 +276,44 @@ class Token:
     
     def __repr__(self):
         return str(self)
+    
+# *******************************************
+# ********** Atributar Gramatica ************
+# *******************************************
+
+
+def evaluate_parse(left_parse, tokens):
+    
+    if not left_parse or not tokens:
+        return
+    
+    left_parse = iter(left_parse)
+    tokens = iter(tokens)
+    next(tokens)
+    result = evaluate(next(left_parse), left_parse, tokens)
+    
+    return result
+    
+def evaluate(production, left_parse, tokens, inherited_value=None):
+    _, body = production
+    
+    attributes = production.attributes
+    synteticed = []
+    inherited = []
+    for i in range(len(attributes)):
+        synteticed.append(None)
+        inherited.append(None)
+    
+    inherited[0] = inherited_value
+    
+    for i, symbol in enumerate(reversed(body),1):
+        index = len(body)-i
+        if symbol.IsTerminal:
+            a = next(tokens).lex
+            synteticed[index+1] = a
+        else:
+            next_production = next(left_parse)
+            synteticed[index+1] = evaluate(next_production,left_parse,tokens, inherited_value)
+
+    return attributes[0](inherited, synteticed)
     
