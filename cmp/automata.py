@@ -4,12 +4,12 @@ except:
     pass
 
 class State:
-    def __init__(self, state, final=False, formatter=lambda x: str(x), shape='circle'):
+    def __init__(self, state, final=False, formatter=lambda x: str(x), shape='circle', tag=None):
         self.state = state
         self.final = final
         self.transitions = {}
         self.epsilon_transitions = set()
-        self.tag = None
+        self.tag = tag
         self.formatter = formatter
         self.shape = shape
 
@@ -101,14 +101,14 @@ class State:
     @staticmethod
     def epsilon_closure_by_state(*states):
         closure = { state for state in states }
-
-        l = 0
-        while l != len(closure):
-            l = len(closure)
-            tmp = [s for s in closure]
-            for s in tmp:
-                for epsilon_state in s.epsilon_transitions:
-                        closure.add(epsilon_state)
+        tmp = [s for s in closure]
+        
+        # print(f'\n\n Estoy en el metodo epsilon_closure_by_state y tengo {tmp} estados')
+        # print(f'Mi primer estado {tmp[0]} tiene {tmp[0].epsilon_transitions} epsilon transiciones')
+        
+        for s in tmp:
+            for epsilon_state in s.epsilon_transitions:
+                    closure.add(epsilon_state)
         return closure
 
     @property
