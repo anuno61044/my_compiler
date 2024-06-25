@@ -30,7 +30,7 @@ class Lexer:
         final_lex = lex = ''
         
         for symbol in string:
-            new_state = state[symbol][0]
+            new_state = State.move_by_state(symbol,state)
             
             final_lex = final_lex + symbol
             

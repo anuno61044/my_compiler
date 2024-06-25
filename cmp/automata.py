@@ -68,6 +68,8 @@ class State:
 
                 if closure not in closures:
                     new_state = State(tuple(closure), any(s.final for s in closure), formatter)
+                    if len(closure) == 1:
+                        new_state = State(closure, any(s.final for s in closure), formatter)
                     closures.append(closure)
                     states.append(new_state)
                     pending.append(new_state)
@@ -96,7 +98,11 @@ class State:
 
     @staticmethod
     def move_by_state(symbol, *states):
-        return { s for state in states if state.has_transition(symbol) for s in state[symbol]}
+        a = { s for state in states if state.has_transition(symbol) for s in state[symbol]}
+        if len(a) == 1:
+            a = a.pop()
+        
+        return a
 
     @staticmethod
     def epsilon_closure_by_state(*states):
@@ -196,6 +202,8 @@ class State:
 
     def write_to(self, fname):
         return self.graph().write_svg(fname)
+
+
 
 def multiline_formatter(state):
     return '\n'.join(str(item) for item in state)

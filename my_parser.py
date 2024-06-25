@@ -12,7 +12,7 @@ def DefGrammar():
     A,T,F = G.NonTerminals('A T F')
 
     # Terminales
-    equal, plus, times, minus, div, num, lpar, rpar = G.Terminals('= + * - / float ( )')
+    plus, times, minus, div, num, lpar, rpar = G.Terminals('+ * - / float ( )')
 
     # Reglas
     E %= A, lambda h,s : s[1]
@@ -37,9 +37,9 @@ def DefGrammar():
 
 G = DefGrammar()
 
-equal, plus, times, minus, div, num, lpar, rpar = G.terminals
+plus, times, minus, div, num, lpar, rpar = G.terminals
 
-parser = LR1Parser(G, verbose=True)
+parser = LR1Parser(G)
 
 tokens = [Token('5', num), Token('+', plus), Token('2', num), Token('$', G.EOF) ]
 derivation = parser([tok.token_type for tok in tokens])
