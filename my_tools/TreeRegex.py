@@ -1,4 +1,4 @@
-import pydot
+# import pydot
 from cmp.utils import ContainerSet
 
 
@@ -17,7 +17,14 @@ class NFA:
             self.vocabulary.add(symbol)
             
         self.vocabulary.discard('')
-        
+
+    def __getitem__(self,symbol:str,state=0):
+        try:
+            return self.map[state,symbol]
+        except:
+            print('No hay transiciones desde ese estado con ese símbolo')
+            return None
+
     def epsilon_transitions(self, state):
         assert state in self.transitions, 'Invalid state'
         try:
@@ -25,19 +32,19 @@ class NFA:
         except KeyError:
             return ()
             
-    def graph(self):
-        G = pydot.Dot(rankdir='LR', margin=0.1)
-        G.add_node(pydot.Node('start', shape='plaintext', label='', width=0, height=0))
+    # def graph(self):
+    #     G = pydot.Dot(rankdir='LR', margin=0.1)
+    #     G.add_node(pydot.Node('start', shape='plaintext', label='', width=0, height=0))
 
-        for (start, tran), destinations in self.map.items():
-            tran = 'ε' if tran == '' else tran
-            G.add_node(pydot.Node(start, shape='circle', style='bold' if start in self.finals else ''))
-            for end in destinations:
-                G.add_node(pydot.Node(end, shape='circle', style='bold' if end in self.finals else ''))
-                G.add_edge(pydot.Edge(start, end, label=tran, labeldistance=2))
+    #     for (start, tran), destinations in self.map.items():
+    #         tran = 'ε' if tran == '' else tran
+    #         G.add_node(pydot.Node(start, shape='circle', style='bold' if start in self.finals else ''))
+    #         for end in destinations:
+    #             G.add_node(pydot.Node(end, shape='circle', style='bold' if end in self.finals else ''))
+    #             G.add_edge(pydot.Edge(start, end, label=tran, labeldistance=2))
 
-        G.add_edge(pydot.Edge('start', self.start, label='', style='dashed'))
-        return G
+    #     G.add_edge(pydot.Edge('start', self.start, label='', style='dashed'))
+    #     return G
 
     def _repr_svg_(self):
         try:
@@ -58,7 +65,6 @@ class DFA(NFA):
     def _move(self, symbol):
         if self.current in self.transitions:
             if symbol in self.transitions[self.current]:
-               
                 return self.transitions[self.current][symbol][0]
         return None
         
@@ -87,8 +93,8 @@ def epsilon_closure(automaton, states):
     
     while pending:
         state = pending.pop()
-        if ('' in automaton.transitions[state]):
-            for x in automaton.transitions[state]['']:
+        if (state,'') in automaton.map:
+            for x in automaton.map[(state,'')]:
                 closure.add(x)
                 pending.append(x)
                 
@@ -144,93 +150,83 @@ def nfa_to_dfa(automaton: NFA):
 
 
 def automata_union(a1, a2):
-    transitions = {}
     
-    start = 0
-    d1 = 1
-    d2 = a1.states + d1
-    final = a2.states + d2
-    print(a1.map.items())
-    for (origin, symbol), destinations in a1.map.items():
-        ## Relocate a1 transitions ...
-        # Your code here
-        transitions[(origin + d1, symbol)] = [dest + d1 for dest in destinations]
-        pass
-
-    for (origin, symbol), destinations in a2.map.items():
-        ## Relocate a2 transitions ...
-        # Your code here
-        transitions[(origin + d2, symbol)] = [dest + d2 for dest in destinations]
-        pass
-    
-    ## Add transitions from start state ...
-    # Your code here
-    transitions[(start, '')] = [d1,d2]
-    ## Add transitions to final state ...
-    # Your code here
-    for state in a1.finals:
-        transitions[(state + d1 , '')] = [final]
-        
-    for state in a2.finals:
-        transitions[(state + d2 , '')] = [final]
-    states = a1.states + a2.states + 2
-    finals = { final }
-    
-    return NFA(states, finals, transitions, start)
-
-def automata_concatenation(a1, a2):
-    transitions = {}
-    
-    start = 0
-    d1 = 0
-    d2 = a1.states + d1
-    final = a2.states + d2
-    
-    for (origin, symbol), destinations in a1.map.items():
-        ## Relocate a1 transitions ...
-        # Your code here
-        transitions[(origin + d1, symbol)] = [dest + d1 for dest in destinations]
-        pass
-
-    for (origin, symbol), destinations in a2.map.items():
-        ## Relocate a2 transitions ...
-        # Your code here
-        transitions[(origin + d2, symbol)] = [dest + d2 for dest in destinations]
-        pass
-    
-    ## Add transitions to final state ...
-    # Your code here
-    for state1 in a1.finals :    
-        transitions[(state1 + d1, '')] = [a2.start + d2]
     states = a1.states + a2.states + 1
-    for state in a2.finals:
-        transitions[(state + d2 , '')] = [final]
-    finals = { final }
+    start = 0
+    transitions = {}
+
+    # Estados finales
+    finals1 = {c+1 for c in a1.finals}
+    finals2 = {c+a1.states+1 for c in a2.finals}
+    finals = set.union(finals1,finals2)
+
+    for (origin,symb),dests in a1.map.items():
+        if (origin,symb) in transitions:
+            for dest in dests:
+                transitions[origin+1,symb].append(dest+1)
+        else:
+            transitions[origin+1,symb] = [dest+1 for dest in dests]
+
+    for (origin,symb),dests in a2.map.items():
+        new_origin = origin+a1.states+1
+        if (new_origin,symb) in transitions:
+            for dest in dests:
+                transitions[new_origin,symb].append(dest+a1.states+1)
+        else:
+            transitions[new_origin,symb] = [dest+a1.states+1 for dest in dests]
+    
+    # Agregar las transiciones del primer estado a los estados iniciales de los automatas
+    transitions[0,''] = [1]
+    transitions[0,''].append(a1.states+1)
+
+    return NFA(states, finals, transitions, start)
+
+def automata_concatenation(a1:NFA, a2:NFA):
+    
+    states = a1.states + a2.states
+    start = a1.start
+    finals = {a1.states+c for c in a2.finals}
+    transitions = {}
+
+    for (origin,symb),dests in a1.map.items():
+        if (origin,symb) in transitions:
+            for dest in dests:
+                transitions[origin,symb].append(dest)
+        else:
+            transitions[origin,symb] = [dest for dest in dests]
+    
+    
+    for (origin,symb),dests in a2.map.items():
+        new_origin = origin+a1.states
+        if (new_origin,symb) in transitions:
+            for dest in dests:
+                transitions[new_origin,symb].append(dest+a1.states)
+        else:
+            transitions[new_origin,symb] = [dest+a1.states for dest in dests]
+    
+    for f in a1.finals:
+        if (f,'') in transitions:
+            transitions[f,''].append(a1.states)
+        else:
+            transitions[f,''] = [a1.states]
     
     return NFA(states, finals, transitions, start)
 
-def automata_closure(a1):
+def automata_closure(a1:NFA):  # Funciona
+    
+    states = a1.states
+    start = a1.start
+    finals = a1.finals
     transitions = {}
     
-    start = 0
-    d1 = 1
-    final = a1.states + d1
+    for (origin,symb),dests in a1.map.items():
+        transitions[(origin,symb)] = [dest for dest in dests]
     
-    for (origin, symbol), destinations in a1.map.items():
-        ## Relocate automaton transitions ...
-        transitions[(origin + d1, symbol)] = [destination + d1 for destination in destinations]
-    
-    ## Add transitions from start state ...
-    # Your code here
-    transitions[(start, '')] = [d1, final]
-    
-    ## Add transitions to final state and to start state ...
-    # Your code here
-    for state in a1.finals:
-        transitions[(state + d1, '')] = [final]
-            
-    states = a1.states +  2
-    finals = { final }
+    for state in finals:
+        transitions[state,''] = [start]
+
+    finals.add(start)
+
     
     return NFA(states, finals, transitions, start)
 

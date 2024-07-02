@@ -1,6 +1,6 @@
-from cmp.pycompiler import *
-from TreeDef import *
-from parser_tools import *
+from my_tools.cmp.pycompiler import *
+from my_tools.TreeDef import *
+from my_tools.parser_tools import *
 from cmp.ast import get_printer
 
 def DefGrammar():
@@ -52,6 +52,8 @@ tokens.reverse()
 derivation.reverse()
 
 result = evaluate_parse(derivation, tokens)
+
+print(result)
 
 printer = get_printer(AtomicNode=ConstantNumberNode, BinaryNode=BinaryNode)
 print(printer(result))
